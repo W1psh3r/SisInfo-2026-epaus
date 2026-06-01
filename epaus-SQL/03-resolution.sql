@@ -112,19 +112,29 @@ BEGIN
 END;
 $$;
 -- endregion
-/*
+
 -- region Question 3
-CREATE OR REPLACE FUNCTION fx-portefolio-info(portfolio_id BIGSERIAL) RETURNS ...
+-- funcao ao para produzir a listagem de um portfolio, incluindo o ISIN, a quantidade, o
+-- valor actual, e a percentagem de variacaoo em relacao ao dia anterior;
+
+CREATE OR REPLACE FUNCTION fx-portefolio-info(portfolio_id BIGSERIAL)
+RETURNS SETOF
+LANGUAGE plpgsql
+AS $$
+
+END;
+$$
 --TODO
 -- endregion
- 
+
+/*
 -- region Question 4
-CREATE OR REPLACE PROCEDURE startTrip(dockid integer, clientid  integer) ...
+CREATE OR REPLACE PROCEDURE p_actualizaValorDiario() ...
 --TODO
 -- endregion
 
 -- region Question 5
-CREATE OR REPLACE VIEW contacto\_cliente(nif,carta_cidadao,nome,tipo_contacto,contacto,descricao)
+CREATE OR REPLACE VIEW contacto_cliente(nif,carta_cidadao,nome,tipo_contacto,contacto,descricao)
 AS
 --TODO
 -- endregion
