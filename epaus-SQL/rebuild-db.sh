@@ -1,10 +1,10 @@
 #!/bin/bash
 
-DB_HOST="host.docker.internal"
+DB_HOST="10.80.41.5"
 DB_PORT="5432"
-DB_NAME="epaus-db"
-DB_USER="user"
-DB_PASSWORD="isel"
+DB_NAME="t41n49"
+DB_USER="t41n49"
+DB_PASSWORD="grupo49"
 
 SQL_DIR="$(cd "$(dirname "$0")" && pwd)"
 

@@ -13,11 +13,13 @@
             <property name="jakarta.persistence.jdbc.driver"
                       value="org.postgresql.Driver" />
             <property name="jakarta.persistence.jdbc.url"
-                      value="jdbc:postgresql://localhost:5432/epaus-db" />
+                      value="jdbc:postgresql://10.80.41.5:5432/t41n49" />
             <property name="jakarta.persistence.jdbc.user"
-                      value="user" />
+                      value="t41n49" />
             <property name="jakarta.persistence.jdbc.password"
-                      value="isel" />
+                      value="grupo49" />
+            <property name="eclipselink.logging.level"
+                      value="OFF"/>
         </properties>
     </persistence-unit>
 </persistence>

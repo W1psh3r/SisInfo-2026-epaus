@@ -184,10 +184,24 @@ class UI implements AutoCloseable
         Dal.close();
     }
 
+    private String getFriendlyErrorMessage(Exception e) {
+        String msg = e.getMessage();
+        if (msg != null && msg.contains("ERROR: ")) {
+            msg = msg.substring(msg.indexOf("ERROR: ") + 7);
+            if (msg.contains("\n")) {
+                msg = msg.substring(0, msg.indexOf('\n'));
+            }
+        }
+        return msg;
+    }
+
     private void createClient() {
         Scanner s = getScanner();
         System.out.print("NIF: ");
         String nif = s.nextLine();
+        if (nif.isEmpty()) {
+            nif = s.nextLine();
+        }
         System.out.print("Cartao de Cidadao: ");
         String cc = s.nextLine();
         System.out.print("Nome: ");
@@ -217,17 +231,21 @@ class UI implements AutoCloseable
             if (tx.isActive()) {
                 tx.rollback();
             }
-            System.out.println("Erro ao criar cliente: " + e.getMessage());
+            System.out.println("Erro ao criar cliente: " + getFriendlyErrorMessage(e));
         } finally {
             em.close();
         }
     }
+
 
     private void createPortfolio()
     {
         Scanner s = getScanner();
         System.out.print("NIF do Cliente: ");
         String nif = s.nextLine();
+        if (nif.isEmpty()) {
+            nif = s.nextLine();
+        }
         System.out.print("Nome do Portefólio: ");
         String portfolioName = s.nextLine();
 
@@ -245,7 +263,7 @@ class UI implements AutoCloseable
             if (tx.isActive()) {
                 tx.rollback();
             }
-            System.out.println("Erro ao criar portefolio: " + e.getMessage());
+            System.out.println("Erro ao criar portefolio: " + getFriendlyErrorMessage(e));
         } finally {
             em.close();
         }
@@ -256,6 +274,9 @@ class UI implements AutoCloseable
         Scanner s = getScanner();
         System.out.print("NIF do Cliente: ");
         String nif = s.nextLine();
+        if (nif.isEmpty()) {
+            nif = s.nextLine();
+        }
 
         EntityManager em = Dal.getEntityManager();
         try {
@@ -278,14 +299,14 @@ class UI implements AutoCloseable
                         .setParameter(1, portfolioId)
                         .getResultList();
 
-                System.out.println("\n--- Portefólio ID: " + portfolioId + " ---");
+                System.out.println("\nPortefólio ID: " + portfolioId);
 
                 if (positions.isEmpty()) {
                     System.out.println("Este portefólio nao tem posições.");
                     continue;
                 }
 
-                System.out.printf("%-15s %-15s %-15s %-15s %-15s\n", "ISIN", "Quantidade", "Valor Atual", "% Var Diária", "Valor Total (Eur)");
+                System.out.printf("%-15s %-15s %-15s %-15s %-15s\n", "ISIN", "Quantidade", "Valor Atual", "% Var Diária", "Valor Total");
                 double portfolioTotal = 0;
                 for (Object[] pos : positions) {
                     String isin = (String) pos[0];
@@ -299,10 +320,10 @@ class UI implements AutoCloseable
                 System.out.printf("Total deste portefolio: %.2f Eur\n", portfolioTotal);
                 grandTotal += portfolioTotal;
             }
-            System.out.printf("\n--- TOTAL GERAL DE TODOS OS PORTEFOLIOS: %.2f Eur ---\n", grandTotal);
+            System.out.printf("\nTOTAL GERAL DE TODOS OS PORTEFOLIOS: %.2f Eur\n", grandTotal);
 
         } catch (Exception e) {
-            System.out.println("Erro ao listar posicoes: " + e.getMessage());
+            System.out.println("Erro ao listar posicoes: " + getFriendlyErrorMessage(e));
         } finally {
             em.close();
         }
@@ -315,12 +336,12 @@ class UI implements AutoCloseable
             tx.begin();
             em.createNativeQuery("CALL p_actualizaValorDiario()").executeUpdate();
             tx.commit();
-            System.out.println("Valores de investimento atualizados com sucesso através do procedimento!");
+            System.out.println("Valores de investimento atualizados com sucesso!");
         } catch (Exception e) {
             if (tx.isActive()) {
                 tx.rollback();
             }
-            System.out.println("Erro ao atualizar investimentos: " + e.getMessage());
+            System.out.println("Erro ao atualizar investimentos: " + getFriendlyErrorMessage(e));
         } finally {
             em.close();
         }
@@ -331,6 +352,9 @@ class UI implements AutoCloseable
         Scanner s = getScanner();
         System.out.print("NIF do Cliente a atualizar: ");
         String nif = s.nextLine();
+        if (nif.isEmpty()) {
+            nif = s.nextLine();
+        }
 
         EntityManager em = Dal.getEntityManager();
         EntityTransaction tx = em.getTransaction();
@@ -370,7 +394,7 @@ class UI implements AutoCloseable
             if (tx.isActive()) {
                 tx.rollback();
             }
-            System.out.println("Erro ao atualizar cliente: " + e.getMessage());
+            System.out.println("Erro ao atualizar cliente: " + getFriendlyErrorMessage(e));
         } finally {
             em.close();
         }
@@ -379,7 +403,7 @@ class UI implements AutoCloseable
     private void about()
     {
         // TODO: Change the code and your Group ID & member names
-        System.out.println("Brought to you by Group !");
+        System.out.println("Brought to you by Group 49!");
         System.out.println("DAL version:"+ isel.sisinf.jpa.Dal.version());
         System.out.println("Core version:"+ isel.sisinf.model.Core.version());
 
