@@ -23,19 +23,24 @@ SOFTWARE.
 */
 package isel.sisinf.ui;
 
-import jakarta.persistence.EntityManager;
-import isel.sisinf.jpa.Dal;
 import java.util.Scanner;
 import java.util.HashMap;
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.OptimisticLockException;
+import isel.sisinf.jpa.Dal;
+import isel.sisinf.model.Cliente;
 
 /**
- * 
- * Didactic material to support 
- * to the curricular unit of 
- * Introduction to Information Systems 
+ *
+ * Didactic material to support
+ * to the curricular unit of
+ * Introduction to Information Systems
  *
  * The examples may not be complete and/or totally correct.
- * They are made available for teaching and learning purposes and 
+ * They are made available for teaching and learning purposes and
  * any inaccuracies are the subject of debate.
  */
 
@@ -59,7 +64,7 @@ class UI implements AutoCloseable
     }
     private static UI __instance = null;
     private static Scanner __s = null;
-  
+
     private HashMap<Option,DbWorker> __dbMethods;
 
     private UI()
@@ -67,7 +72,7 @@ class UI implements AutoCloseable
         // DO NOT CHANGE ANYTHING!
         __dbMethods = new HashMap<Option,DbWorker>();
         __dbMethods.put(Option.createClient, () -> UI.this.createClient());
-        __dbMethods.put(Option.createPortfolio, () -> UI.this.createPortfolio()); 
+        __dbMethods.put(Option.createPortfolio, () -> UI.this.createPortfolio());
         __dbMethods.put(Option.listPositions, () -> UI.this.listPositions());
         __dbMethods.put(Option.updateInvestments, () -> UI.this.updateInvestments());
         __dbMethods.put(Option.updateClient, () ->  UI.this.updateClient());
@@ -108,10 +113,10 @@ class UI implements AutoCloseable
             System.out.println();
             System.out.println("1. Exit");
             System.out.println("2. Create Client");
-            System.out.println("3. List Existing Costumer");
-            System.out.println("4. List Docks");
-            System.out.println("5. Start Trip");
-            System.out.println("6. Park Scooter");
+            System.out.println("3. Create Portefolio");
+            System.out.println("4. List Positions");
+            System.out.println("5. Update Investments");
+            System.out.println("6. Update Client");
             System.out.println("7. About");
             System.out.print(">");
             int result = s.nextInt();
@@ -121,7 +126,7 @@ class UI implements AutoCloseable
         {
             //nothing to do.
         }
-        
+
         return option;
 
     }
@@ -155,18 +160,18 @@ class UI implements AutoCloseable
     }
 
     /**
-    To implement from this point forward. 
-    -------------------------------------------------------------------------------------     
-        IMPORTANT:
-    --- DO NOT MESS WITH THE CODE ABOVE. YOU JUST HAVE TO IMPLEMENT THE METHODS BELOW ---
-    --- Other Methods and properties can be added to support implementation. 
-    ---- Do that also below                                                         -----
-    -------------------------------------------------------------------------------------
-    
-    */
+     To implement from this point forward.
+     -------------------------------------------------------------------------------------
+     IMPORTANT:
+     --- DO NOT MESS WITH THE CODE ABOVE. YOU JUST HAVE TO IMPLEMENT THE METHODS BELOW ---
+     --- Other Methods and properties can be added to support implementation.
+     ---- Do that also below                                                         -----
+     -------------------------------------------------------------------------------------
+
+     */
 
 
-    //Implement an AutoClosable object. 
+    //Implement an AutoClosable object.
     // If needed you can add more stuff to clean at the end
     @Override
     public void close()
@@ -176,82 +181,216 @@ class UI implements AutoCloseable
             __s.close();
             __s = null;
         }
+        Dal.close();
     }
 
     private void createClient() {
-        // TODO
-        System.out.println("createClient()");
+        Scanner s = getScanner();
+        System.out.print("NIF: ");
+        String nif = s.nextLine();
+        System.out.print("Cartao de Cidadao: ");
+        String cc = s.nextLine();
+        System.out.print("Nome: ");
+        String name = s.nextLine();
+        System.out.print("Tipo de Contacto (email / telefone): ");
+        String contactType = s.nextLine();
+        System.out.print("Contacto (ex: teste@gmail.com ou 912345678): ");
+        String contact = s.nextLine();
+        System.out.print("Descrição do Contacto (ex: Pessoal): ");
+        String contactDesc = s.nextLine();
+
+        EntityManager em = Dal.getEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            em.createNativeQuery("INSERT INTO contacto_cliente (nif, cartao_cidadao, nome, tipo_contacto, contacto, descricao) VALUES (?, ?, ?, ?, ?, ?)")
+                    .setParameter(1, nif)
+                    .setParameter(2, cc)
+                    .setParameter(3, name)
+                    .setParameter(4, contactType)
+                    .setParameter(5, contact)
+                    .setParameter(6, contactDesc)
+                    .executeUpdate();
+            tx.commit();
+            System.out.println("Cliente e contacto criados com sucesso!");
+        } catch (Exception e) {
+            if (tx.isActive()) {
+                tx.rollback();
+            }
+            System.out.println("Erro ao criar cliente: " + e.getMessage());
+        } finally {
+            em.close();
+        }
     }
-  
+
     private void createPortfolio()
     {
-        // TODO
-        System.out.println("createPortfolio()");
+        Scanner s = getScanner();
+        System.out.print("NIF do Cliente: ");
+        String nif = s.nextLine();
+        System.out.print("Nome do Portefólio: ");
+        String portfolioName = s.nextLine();
+
+        EntityManager em = Dal.getEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            em.createNativeQuery("INSERT INTO portefolio (cliente_nif, nome) VALUES (?, ?)")
+                    .setParameter(1, nif)
+                    .setParameter(2, portfolioName)
+                    .executeUpdate();
+            tx.commit();
+            System.out.println("Portefólio criado com sucesso!");
+        } catch (Exception e) {
+            if (tx.isActive()) {
+                tx.rollback();
+            }
+            System.out.println("Erro ao criar portefolio: " + e.getMessage());
+        } finally {
+            em.close();
+        }
     }
 
     private void listPositions()
     {
-        // TODO
-        System.out.println("listPositions()");
+        Scanner s = getScanner();
+        System.out.print("NIF do Cliente: ");
+        String nif = s.nextLine();
 
+        EntityManager em = Dal.getEntityManager();
+        try {
+            @SuppressWarnings("unchecked")
+            List<Long> portfolioIds = em.createNativeQuery("SELECT portefolio_id FROM portefolio WHERE cliente_nif = ?")
+                    .setParameter(1, nif)
+                    .getResultList();
+
+            if (portfolioIds.isEmpty()) {
+                System.out.println("Nenhum portefólio encontrado para este cliente.");
+                return;
+            }
+
+            double grandTotal = 0;
+            for (Number portfolioIdNum : portfolioIds) {
+                Long portfolioId = portfolioIdNum.longValue();
+
+                @SuppressWarnings("unchecked")
+                List<Object[]> positions = em.createNativeQuery("SELECT * FROM fx_portefolio_info(?)")
+                        .setParameter(1, portfolioId)
+                        .getResultList();
+
+                System.out.println("\n--- Portefólio ID: " + portfolioId + " ---");
+
+                if (positions.isEmpty()) {
+                    System.out.println("Este portefólio nao tem posições.");
+                    continue;
+                }
+
+                System.out.printf("%-15s %-15s %-15s %-15s %-15s\n", "ISIN", "Quantidade", "Valor Atual", "% Var Diária", "Valor Total (Eur)");
+                double portfolioTotal = 0;
+                for (Object[] pos : positions) {
+                    String isin = (String) pos[0];
+                    java.math.BigDecimal quantity = (java.math.BigDecimal) pos[1];
+                    java.math.BigDecimal currentValue = (java.math.BigDecimal) pos[2];
+                    java.math.BigDecimal dailyVar = (java.math.BigDecimal) pos[3];
+                    double totalValue = quantity.doubleValue() * currentValue.doubleValue();
+                    portfolioTotal += totalValue;
+                    System.out.printf("%-15s %-15.4f %-15.2f %-15.2f %-15.2f\n", isin, quantity, currentValue, dailyVar, totalValue);
+                }
+                System.out.printf("Total deste portefolio: %.2f Eur\n", portfolioTotal);
+                grandTotal += portfolioTotal;
+            }
+            System.out.printf("\n--- TOTAL GERAL DE TODOS OS PORTEFOLIOS: %.2f Eur ---\n", grandTotal);
+
+        } catch (Exception e) {
+            System.out.println("Erro ao listar posicoes: " + e.getMessage());
+        } finally {
+            em.close();
+        }
     }
 
     private void updateInvestments() {
-        // TODO
-        System.out.println("updateInvestments()");
+        EntityManager em = Dal.getEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            em.createNativeQuery("CALL p_actualizaValorDiario()").executeUpdate();
+            tx.commit();
+            System.out.println("Valores de investimento atualizados com sucesso através do procedimento!");
+        } catch (Exception e) {
+            if (tx.isActive()) {
+                tx.rollback();
+            }
+            System.out.println("Erro ao atualizar investimentos: " + e.getMessage());
+        } finally {
+            em.close();
+        }
     }
 
     private void updateClient()
     {
-        // TODO
-        System.out.println("parkScooter()");
-        
+        Scanner s = getScanner();
+        System.out.print("NIF do Cliente a atualizar: ");
+        String nif = s.nextLine();
+
+        EntityManager em = Dal.getEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            Cliente cliente = em.find(Cliente.class, nif);
+            if (cliente == null) {
+                System.out.println("Cliente não encontrado!");
+                tx.rollback();
+                return;
+            }
+
+            System.out.println("Nome atual: " + cliente.getNome());
+            System.out.print("Novo Nome (deixe em branco para manter o atual): ");
+            String newName = s.nextLine();
+            if (!newName.isEmpty()) {
+                cliente.setNome(newName);
+            }
+
+            System.out.println("Cartão de Cidadão atual: " + cliente.getCartaoCidadao());
+            System.out.print("Novo Cartão de Cidadão (deixe em branco para manter o atual): ");
+            String newCC = s.nextLine();
+            if (!newCC.isEmpty()) {
+                cliente.setCartaoCidadao(newCC);
+            }
+
+            em.merge(cliente);
+            tx.commit();
+            System.out.println("Cliente atualizado com sucesso!");
+
+        } catch (OptimisticLockException e) {
+            if (tx.isActive()) {
+                tx.rollback();
+            }
+            System.out.println("ERRO: Os dados deste cliente foram modificados por outro utilizador enquanto tentava guardar. A transação foi cancelada (Optimistic Locking). Tente novamente.");
+        } catch (Exception e) {
+            if (tx.isActive()) {
+                tx.rollback();
+            }
+            System.out.println("Erro ao atualizar cliente: " + e.getMessage());
+        } finally {
+            em.close();
+        }
     }
 
     private void about()
     {
         // TODO: Change the code and your Group ID & member names
-        System.out.println("Brought to you by a wonderful set of professors!");
+        System.out.println("Brought to you by Group !");
         System.out.println("DAL version:"+ isel.sisinf.jpa.Dal.version());
         System.out.println("Core version:"+ isel.sisinf.model.Core.version());
-        
+
     }
 }
 
 public class App{
     public static void main(String[] args) throws Exception{
-        try {
-
-            System.out.println(
-                    Thread.currentThread()
-                            .getContextClassLoader()
-                            .getResource("META-INF/persistence.xml")
-            );
-
-            EntityManager em = Dal.getEntityManager();
-
-            System.out.println("JPA connection successful!");
-
-            Object version = em
-                    .createNativeQuery("SELECT version()")
-                    .getSingleResult();
-
-            System.out.println(version);
-
-            em.close();
-
-            try(UI ui = UI.getInstance()) {
-                ui.Run();
-            }
-
-        } catch (Exception e) {
-
-            System.out.println("Connection failed!");
-            e.printStackTrace();
-
-        } finally {
-
-            Dal.close();
+        try(UI ui = UI.getInstance())
+        {
+            ui.Run();
         }
     }
 }
