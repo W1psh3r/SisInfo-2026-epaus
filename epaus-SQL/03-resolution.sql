@@ -15,23 +15,12 @@
 
 
 -- region Question 1.a
-CREATE OR REPLACE FUNCTION validate_NIF_func()
-    RETURNS TRIGGER
-    LANGUAGE plpgsql
-AS
-$$
+CREATE OR REPLACE FUNCTION validate_NIF_func() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-    -- Verifica se o NIF é nulo
-    IF NEW.nif IS NULL THEN
-        RAISE EXCEPTION 'NIF não pode ser NULL';
-    END IF;
-
-    -- Valida se contém 9 dígitos numéricos exatos
-    IF NEW.nif !~ '^[0-9]{9}$' THEN
-        RAISE EXCEPTION 'NIF inválido! Tem de conter exatamente 9 dígitos (apenas números).';
-    END IF;
-
-    RETURN NEW;
+    IF NEW.nif IS NULL OR NEW.nif !~ '^[0-9]{9}$' THEN
+        RAISE EXCEPTION 'NIF inválido! Tem de conter exatamente 9 dígitos numéricos.';
+END IF;
+RETURN NEW;
 END;
 $$;
 
@@ -178,25 +167,14 @@ BEGIN
             ORDER BY data_tempo DESC
             LIMIT 1;
 
-            -- Descobrir o valor de abertura (tentar ir buscar o fecho de ontem)
-            SELECT valor_fecho
+            -- Descobrir o valor de abertura
+            SELECT valor
             INTO open_val
-            FROM valor_instrumento_diario
-            WHERE instrumento_isin = instrumento_rec.identificador
-              AND data < CURRENT_DATE
-            ORDER BY data DESC
+            FROM triplo_externo
+            WHERE identificador = instrumento_rec.identificador
+              AND data_tempo::DATE = CURRENT_DATE
+            ORDER BY data_tempo ASC
             LIMIT 1;
-
-            -- Se não houver dados de ontem (open_val continua NULL), a abertura é o primeiro triplo de hoje
-            IF open_val IS NULL THEN
-                SELECT valor
-                INTO open_val
-                FROM triplo_externo
-                WHERE identificador = instrumento_rec.identificador
-                  AND data_tempo::DATE = CURRENT_DATE
-                ORDER BY data_tempo ASC
-                LIMIT 1;
-            END IF;
 
             -- Guardar tudo na tabela (Inserir ou Atualizar se já existir conflito em data)
             INSERT INTO valor_instrumento_diario (instrumento_isin, data, valor_minimo, valor_maximo, valor_abertura,
@@ -249,7 +227,7 @@ BEGIN
             VALUES (NEW.nif, NEW.cartao_cidadao, NEW.nome);
         END IF;
 
-        -- Insere na tabela de contactos correta dependendo do tipo fornecido
+        -- Insere o contacto na tabela correspondente
         IF NEW.tipo_contacto = 'email' THEN
             INSERT INTO contacto_email(cliente_nif, email, descricao)
             VALUES (NEW.nif, NEW.contacto, NEW.descricao);
@@ -289,7 +267,7 @@ BEGIN
 
         -- DELETE
     ELSIF TG_OP = 'DELETE' THEN
-        -- Remove apenas o contacto específico (preservando o cliente principal)
+        -- Remove o contacto na tabela correspondente
         IF OLD.tipo_contacto = 'email' THEN
             DELETE
             FROM contacto_email
@@ -319,6 +297,9 @@ EXECUTE FUNCTION fn_contacto_cliente_dml();
 ALTER TABLE cliente
     ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
 
+-- O sistema deve garantir que sempre que o valor diário
+-- de um instrumento é alterado, é mantida coerência com o
+-- valor diário registado para o mercado.
 CREATE OR REPLACE FUNCTION update_market_value_func()
     RETURNS TRIGGER
     LANGUAGE plpgsql
@@ -342,7 +323,7 @@ BEGIN
       AND vid.data = NEW.data;
 
     -- Obter o valor de índice do mercado do dia anterior
-    v_ontem := NEW.data - INTERVAL '1 day';
+    v_ontem := NEW.data - 1;
     SELECT valor_indice
     INTO v_valor_abertura_mercado
     FROM valor_mercado_diario
@@ -353,7 +334,7 @@ BEGIN
         v_valor_abertura_mercado := 0;
     END IF;
 
-    -- Atualiza o valor diário do mercado (mantendo a coerência descrita nos requisitos)
+    -- Atualiza o valor diário do mercado
     INSERT INTO valor_mercado_diario(mercado, data, valor_indice, valor_abertura, variacao_diaria)
     VALUES (v_mercado, NEW.data, v_sum_abertura, v_valor_abertura_mercado,
             v_sum_abertura - v_valor_abertura_mercado)

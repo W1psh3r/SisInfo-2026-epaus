@@ -9,6 +9,8 @@
 
     <persistence-unit name="JPASisInf" transaction-type="RESOURCE_LOCAL">
         <class>isel.sisinf.model.Cliente</class>
+        <class>isel.sisinf.model.Portefolio</class>
+        <class>isel.sisinf.model.ContactoCliente</class>
         <properties>
             <property name="jakarta.persistence.jdbc.driver"
                       value="org.postgresql.Driver" />

@@ -32,6 +32,8 @@ import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.OptimisticLockException;
 import isel.sisinf.jpa.Dal;
 import isel.sisinf.model.Cliente;
+import isel.sisinf.model.Portefolio;
+import isel.sisinf.model.ContactoCliente;
 
 /**
  *
@@ -217,21 +219,15 @@ class UI implements AutoCloseable
         EntityTransaction tx = em.getTransaction();
         try {
             tx.begin();
-            em.createNativeQuery("INSERT INTO contacto_cliente (nif, cartao_cidadao, nome, tipo_contacto, contacto, descricao) VALUES (?, ?, ?, ?, ?, ?)")
-                    .setParameter(1, nif)
-                    .setParameter(2, cc)
-                    .setParameter(3, name)
-                    .setParameter(4, contactType)
-                    .setParameter(5, contact)
-                    .setParameter(6, contactDesc)
-                    .executeUpdate();
+            ContactoCliente ccObj = new ContactoCliente(nif, cc, name, contactType, contact, contactDesc);
+            em.persist(ccObj);
             tx.commit();
             System.out.println("Cliente e contacto criados com sucesso!");
         } catch (Exception e) {
             if (tx.isActive()) {
                 tx.rollback();
             }
-            System.out.println("Erro ao criar cliente: " + getFriendlyErrorMessage(e));
+            System.out.println("Erro ao criar cliente/contacto: " + getFriendlyErrorMessage(e));
         } finally {
             em.close();
         }
@@ -253,10 +249,16 @@ class UI implements AutoCloseable
         EntityTransaction tx = em.getTransaction();
         try {
             tx.begin();
-            em.createNativeQuery("INSERT INTO portefolio (cliente_nif, nome) VALUES (?, ?)")
-                    .setParameter(1, nif)
-                    .setParameter(2, portfolioName)
-                    .executeUpdate();
+            Cliente cliente = em.find(Cliente.class, nif);
+            if (cliente == null) {
+                System.out.println("Erro: Cliente não encontrado.");
+                tx.rollback();
+                return;
+            }
+            Portefolio p = new Portefolio();
+            p.setCliente(cliente);
+            p.setNome(portfolioName);
+            em.persist(p);
             tx.commit();
             System.out.println("Portefólio criado com sucesso!");
         } catch (Exception e) {
@@ -280,26 +282,25 @@ class UI implements AutoCloseable
 
         EntityManager em = Dal.getEntityManager();
         try {
-            @SuppressWarnings("unchecked")
-            List<Long> portfolioIds = em.createNativeQuery("SELECT portefolio_id FROM portefolio WHERE cliente_nif = ?")
-                    .setParameter(1, nif)
+            List<Portefolio> portfolios = em.createQuery("SELECT p FROM Portefolio p WHERE p.cliente.nif = :nif", Portefolio.class)
+                    .setParameter("nif", nif)
                     .getResultList();
 
-            if (portfolioIds.isEmpty()) {
+            if (portfolios.isEmpty()) {
                 System.out.println("Nenhum portefólio encontrado para este cliente.");
                 return;
             }
 
             double grandTotal = 0;
-            for (Number portfolioIdNum : portfolioIds) {
-                Long portfolioId = portfolioIdNum.longValue();
+            for (Portefolio p : portfolios) {
+                Long portfolioId = p.getPortefolioId();
 
                 @SuppressWarnings("unchecked")
                 List<Object[]> positions = em.createNativeQuery("SELECT * FROM fx_portefolio_info(?)")
                         .setParameter(1, portfolioId)
                         .getResultList();
 
-                System.out.println("\nPortefólio ID: " + portfolioId);
+                System.out.println("\nPortefólio ID: " + portfolioId + " - Nome: " + p.getNome());
 
                 if (positions.isEmpty()) {
                     System.out.println("Este portefólio nao tem posições.");
@@ -404,6 +405,7 @@ class UI implements AutoCloseable
     {
         // TODO: Change the code and your Group ID & member names
         System.out.println("Brought to you by Group 49!");
+        System.out.println("Fernando Duarte e Gabriel Ferreira!");
         System.out.println("DAL version:"+ isel.sisinf.jpa.Dal.version());
         System.out.println("Core version:"+ isel.sisinf.model.Core.version());
 
