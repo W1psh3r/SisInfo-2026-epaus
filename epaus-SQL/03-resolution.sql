@@ -144,46 +144,123 @@ DECLARE
     max_val         NUMERIC;
     close_val       NUMERIC;
     open_val        NUMERIC;
+    data_atual DATE := CURRENT_DATE;
+    previous_close NUMERIC;
+    six_month_close NUMERIC;
 BEGIN
     -- Loop por cada instrumento que teve triplos hoje
     FOR instrumento_rec IN
-        SELECT DISTINCT identificador
-        FROM triplo_externo
-        WHERE data_tempo::DATE = CURRENT_DATE
+        SELECT DISTINCT te.identificador
+        FROM triplo_externo te
+        JOIN instrumento i
+            ON i.instrumento_id = te.identificador
+        WHERE data_tempo::DATE = data_atual
         LOOP
             -- Descobrir o valor min e max de hoje
-            SELECT MIN(valor), MAX(valor)
+            SELECT MIN(te.valor), MAX(te.valor)
             INTO min_val, max_val
-            FROM triplo_externo
-            WHERE identificador = instrumento_rec.identificador
-              AND data_tempo::DATE = CURRENT_DATE;
+            FROM triplo_externo te
+            WHERE te.identificador = instrumento_rec.identificador
+              AND te.data_tempo::DATE = data_atual;
 
             -- Descobrir o valor de fecho
-            SELECT valor
+            SELECT te.valor
             INTO close_val
-            FROM triplo_externo
-            WHERE identificador = instrumento_rec.identificador
-              AND data_tempo::DATE = CURRENT_DATE
-            ORDER BY data_tempo DESC
+            FROM triplo_externo te
+            WHERE te.identificador = instrumento_rec.identificador
+              AND te.data_tempo::DATE = data_atual
+            ORDER BY te.data_tempo DESC
             LIMIT 1;
 
             -- Descobrir o valor de abertura
-            SELECT valor
+            SELECT te.valor
             INTO open_val
-            FROM triplo_externo
-            WHERE identificador = instrumento_rec.identificador
-              AND data_tempo::DATE = CURRENT_DATE
+            FROM triplo_externo te
+            WHERE te.identificador = instrumento_rec.identificador
+              AND te.data_tempo::DATE = data_atual
             ORDER BY data_tempo ASC
             LIMIT 1;
 
-            -- Guardar tudo na tabela (Inserir ou Atualizar se já existir conflito em data)
-            INSERT INTO valor_instrumento_diario (instrumento_isin, data, valor_minimo, valor_maximo, valor_abertura,
-                                                  valor_fecho)
-            VALUES (instrumento_rec.identificador, CURRENT_DATE, min_val, max_val, open_val, close_val)
-            ON CONFLICT (instrumento_isin, data) DO UPDATE SET valor_minimo   = EXCLUDED.valor_minimo,
-                                                                valor_maximo   = EXCLUDED.valor_maximo,
-                                                                valor_abertura = EXCLUDED.valor_abertura,
-                                                                valor_fecho    = EXCLUDED.valor_fecho;
+            -- Guardar tudo na tabela valor_instrumento_diario (Inserir ou Atualizar se já existir conflito em data)
+            INSERT INTO valor_instrumento_diario (
+                  instrumento_isin,
+                  data,
+                  valor_minimo,
+                  valor_maximo,
+                  valor_abertura,
+                  valor_fecho)
+            VALUES (
+    instrumento_rec.identificador,
+             data_atual,
+    min_val,
+    max_val,
+    open_val,
+    close_val)
+            ON CONFLICT (instrumento_isin, data) DO UPDATE
+            SET valor_minimo   = EXCLUDED.valor_minimo,
+                valor_maximo   = EXCLUDED.valor_maximo,
+                valor_abertura = EXCLUDED.valor_abertura,
+                valor_fecho    = EXCLUDED.valor_fecho;
+
+            /*
+                Valor de fecho mais próximo de há seis meses.
+                Usado para calcular a variação a seis meses.
+            */
+            SELECT vid.valor_fecho
+            INTO six_month_close
+            FROM valor_instrumento_diario vid
+            WHERE vid.instrumento_isin = instrumento_rec.identificador
+              AND vid.data <= data_atual - 180
+            ORDER BY vid.data DESC
+            LIMIT 1;
+
+            -- Guardar tudo na tabela dados_fundamentais(Inserir ou Atualizar se já existir conflito em data)
+            INSERT INTO dados_fundamentais (
+                instrumento_isin,
+                variacao_diaria,
+                valor_actual,
+                media_6_meses,
+                variacao_6_meses,
+                percentagem_variacao_diaria,
+                percentagem_variacao_6_meses
+            )
+            VALUES (
+                       instrumento_rec.identificador,
+
+                       ROUND(max_val - min_val, 2),
+
+                       ROUND(close_val, 2),
+
+                       ROUND(
+                               COALESCE(
+                                       fx_media_movel(180, instrumento_rec.identificador),
+                                       close_val
+                               ),
+                               2
+                       ),
+
+                       ROUND(
+                               close_val - COALESCE(six_month_close, close_val),
+                               2
+                       ),
+
+                       CASE
+                           WHEN previous_close IS NULL OR previous_close = 0 THEN 0
+                           ELSE ROUND(((close_val - previous_close) / previous_close) * 100, 2)
+                           END,
+
+                       CASE
+                           WHEN six_month_close IS NULL OR six_month_close = 0 THEN 0
+                           ELSE ROUND(((close_val - six_month_close) / six_month_close) * 100, 2)
+                           END
+                   )
+            ON CONFLICT (instrumento_isin) DO UPDATE
+                SET variacao_diaria = EXCLUDED.variacao_diaria,
+                    valor_actual = EXCLUDED.valor_actual,
+                    media_6_meses = EXCLUDED.media_6_meses,
+                    variacao_6_meses = EXCLUDED.variacao_6_meses,
+                    percentagem_variacao_diaria = EXCLUDED.percentagem_variacao_diaria,
+                    percentagem_variacao_6_meses = EXCLUDED.percentagem_variacao_6_meses;
 
         END LOOP;
 END;
