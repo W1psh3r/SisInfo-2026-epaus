@@ -115,7 +115,7 @@ class UI implements AutoCloseable
             System.out.println();
             System.out.println("1. Exit");
             System.out.println("2. Create Client");
-            System.out.println("3. Create Portefolio");
+            System.out.println("3. Create Portfolio");
             System.out.println("4. List Positions");
             System.out.println("5. Update Investments");
             System.out.println("6. Update Client");
@@ -255,9 +255,7 @@ class UI implements AutoCloseable
                 tx.rollback();
                 return;
             }
-            Portefolio p = new Portefolio();
-            p.setCliente(cliente);
-            p.setNome(portfolioName);
+            Portefolio p = new Portefolio(cliente, portfolioName);
             em.persist(p);
             tx.commit();
             System.out.println("Portefólio criado com sucesso!");

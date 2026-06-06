@@ -30,6 +30,11 @@ public class Portefolio {
     public Portefolio() {
     }
 
+    public Portefolio(Cliente cliente, String nome) {
+        this.cliente = cliente;
+        this.nome = nome;
+    }
+
     public Long getPortefolioId() {
         return portefolioId;
     }
