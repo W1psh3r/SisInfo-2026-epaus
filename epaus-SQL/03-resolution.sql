@@ -226,29 +226,14 @@ BEGIN
             )
             VALUES (
                        instrumento_rec.identificador,
-
                        ROUND(max_val - min_val, 2),
-
                        ROUND(close_val, 2),
-
-                       ROUND(
-                               COALESCE(
-                                       fx_media_movel(180, instrumento_rec.identificador),
-                                       close_val
-                               ),
-                               2
-                       ),
-
-                       ROUND(
-                               close_val - COALESCE(six_month_close, close_val),
-                               2
-                       ),
-
+                       ROUND(COALESCE(fx_media_movel(180, instrumento_rec.identificador),close_val),2),
+                       ROUND(close_val - COALESCE(six_month_close, close_val),2),
                        CASE
                            WHEN previous_close IS NULL OR previous_close = 0 THEN 0
                            ELSE ROUND(((close_val - previous_close) / previous_close) * 100, 2)
                            END,
-
                        CASE
                            WHEN six_month_close IS NULL OR six_month_close = 0 THEN 0
                            ELSE ROUND(((close_val - six_month_close) / six_month_close) * 100, 2)

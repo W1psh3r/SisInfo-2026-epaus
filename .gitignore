@@ -1,0 +1,13 @@
+# Ficheiros e pastas gerados pelo Maven
+target/
+
+# Ficheiros de log
+*.log
+
+# Ficheiros específicos do IDE (IntelliJ)
+.idea/
+*.iml
+
+# Ficheiros de sistema operativo
+.DS_Store
+Thumbs.db
